@@ -1,0 +1,26 @@
+{
+  "name": "stat.aws.dk_browser",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "devbuild": "npm install && webpack",
+    "lint": "jshint js/index.js & jshint js/dawa-ois-koder.js & jshint js/dawa-leaflet-grafik.js & jshint js/dawa-leaflet-autocomplete.js"
+  },
+  "author": "Finn Jordal",
+  "license": "MIT",
+  "dependencies": {
+    "dawa-autocomplete2": "^0.13.0",
+    "dawa-kort": "^0.1.24",
+    "dawa-util": "^0.1.8",
+    "leaflet": "^1.2.0",
+    "leaflet-contextmenu": "^1.4.0",
+    "moment": "^2.20.1",
+    "proj4leaflet": "^1.0.2"
+  },
+  "devDependencies": {
+    "webpack": "^3.5.5",
+    "jshint": "^2.9.5"
+  }
+}

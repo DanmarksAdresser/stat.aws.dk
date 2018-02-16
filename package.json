@@ -1,0 +1,32 @@
+{
+  "name": "stat.aws.dk",
+  "version": "1.0.0",
+  "description": "Find en adresse på et kort",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "env": "env",
+    "lint": "jshint index.js",
+    "devbuild": "npm install && cd public && npm run devbuild",
+    "build": "npm install --production && cd public && npm install --production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DanmarksAdresser/find.aws.dk.git"
+  },
+  "author": "Finn Jordal",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DanmarksAdresser/find.aws.dk/issues"
+  },
+  "homepage": "https://github.com/DanmarksAdresser/find.aws.dk#readme",
+  "dependencies": {
+    "express": "^4.15.4",
+    "kf-getticket": "^1.0.0",
+    "request": "^2.81.0",
+    "request-promise": "^4.2.1"
+  },
+  "devDependencies": {
+    "jshint": "^2.9.5"
+  }
+}
