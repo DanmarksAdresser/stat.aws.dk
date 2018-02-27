@@ -127,7 +127,7 @@ function placerAdgangsadresse(map, linje) {
       color= 'black';
       break;
     }
-  var marker= L.circleMarker(L.latLng(placering.y, placering.x), {color: color, fillColor: color, stroke: true, fillOpacity: 1.0, radius: 2, weight: 2, opacity: 1.0}).addTo(map);//defaultpointstyle); 
+  var marker= L.circleMarker(L.latLng(placering.y, placering.x), {color: color, fillColor: color, stroke: true, fillOpacity: 1.0, radius: 1, weight: 2, opacity: 1.0}).addTo(map);//defaultpointstyle); 
 }
 
 function getQueryVariable(variable) {
