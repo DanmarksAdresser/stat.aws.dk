@@ -16681,22 +16681,27 @@ function gennemløbhændelser(map) {
   let url = util.danUrl('http://dawa.aws.dk/replikering/adgangsadresser/haendelser', {tidspunktfra: fra.utc().toISOString(), tidspunkttil: til.utc().toISOString(), ndjson: true}); 
   fetch(url).then(function (response) { //'?tidspunktfra=2014-11-28T18:59:02.045Z&tidspunkttil=2014-12-01T18:59:02.045Z&ndjson').then(function (response) {
     const reader= response.body.getReader();
-    var result= "";
+    var result= new Uint8Array();
 
     reader.read().then(function processText({ done, value }) {
 
       if (done) {
-        if (result.length > 0) placerAdgangsadresse(map, result);
+        if (result.length > 0) {
+          var linje= new TextDecoder("utf-8").decode(result);
+          placerAdgangsadresse(map, linje);
+        }
         console.log("Stream complete");
         //alert("Stream complete");
         return;
       }
-
-      const chunk = new TextDecoder("utf-8").decode(value);      
-      result += chunk;
+      var arr= new Uint8Array(result.length + value.length);
+      arr.set(result);
+      arr.set(value, result.length);
+      result= arr;
       var p1= 0, p2;
-      while ((p2= result.indexOf('\n',p1)) != -1) {
-        var linje= result.slice(p1,p2);
+      while ((p2= result.indexOf(10,p1)) != -1) {
+        console.log()
+        var linje= new TextDecoder("utf-8").decode(result.slice(p1,p2));
         p1= p2+1;
         placerAdgangsadresse(map, linje);
       };
@@ -16709,14 +16714,15 @@ function gennemløbhændelser(map) {
 }
 
 var adgangsadresserid;
-function placerAdgangsadresse(map, linje) {  
+function placerAdgangsadresse(map, linje) {
+  console.log(linje);  
   var hændelse= JSON.parse(linje);
   if (hændelse.operation === 'update' && adgangsadresserid === hændelse.data.id) return;
   adgangsadresserid= hændelse.data.id;
   tid= moment(hændelse.tidspunkt).local().format('DD.MM.YYYY HH:mm:ss');
   //console.log(hændelse);
   var placering= kort.etrs89towgs84(hændelse.data.etrs89koordinat_øst,hændelse.data.etrs89koordinat_nord);
-  if (!(placering.x || placering.y)) return; // find ud af hvorfor etrs89koordinat_øst i nogen tilfælde ændres til etrs89koordinat_��st
+  //if (!(placering.x || placering.y)) return; // find ud af hvorfor etrs89koordinat_øst i nogen tilfælde ændres til etrs89koordinat_��st
   //console.log(placering);
   var color;
   switch (hændelse.operation) {
