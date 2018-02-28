@@ -10,6 +10,57 @@ function getMap() {
   return map;
 }
 
+var fra= moment(getQueryVariable('fra'),'YYYYMMDD');
+if (!fra.isValid()) {
+  alert('fra=' + getQueryVariable('fra') + ' er ikke en gyldig dato');
+}
+
+var til= moment(getQueryVariable('til'),'YYYYMMDD');
+if (!til.isValid()) {
+  alert('til=' + getQueryVariable('til') + ' er ikke en gyldig dato');
+}
+til.add({days: 1});
+
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); 
+    this.update();
+    return this._div;
+};
+
+var oprettede= 0
+  , ændrede= 0
+  , nedlagte= 0
+  , tid= "";
+
+// method that we will use to update the control based on feature properties passed
+info.update = function () {
+    this._div.innerHTML = '<h3>Ajourføring af adgangsadresser</h3>'+
+      '<p>' + fra.local().format('DD.MM.YYYY HH:mm:ss')  + ' - ' + til.local().format('DD.MM.YYYY HH:mm:ss') + '</p>' +
+      '<p>Tidspunkt: ' + tid +
+      '<p>' + oprettede + ' oprettede</p>' +
+      '<p>' + ændrede + ' ændrede</p>' +
+      '<p>' + nedlagte + ' nedlagte</p>';
+      ;
+  
+};
+
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+  var div = L.DomUtil.create('div', 'info legend');
+
+  
+  div.innerHTML=
+          '<p><i style="background: red"></i> Oprettet</p>' +
+          '<p><i style="background: orange"></i> Ændret</p>' +
+          '<p><i style="background: black"></i> Nedlagt</p>';
+
+  return div;
+};
+
 var options= {
   contextmenu: true,
   contextmenuWidth: 140,
@@ -48,6 +99,8 @@ function main() {
   fetch('/getticket').then(function (response) {
     response.text().then(function (ticket) {      
       map= kort.viskort('map', ticket, options);
+      info.addTo(map);
+      legend.addTo(map);
       var center= kort.beregnCenter();
       map.setView(center,2);
       gennemløbhændelser(map);
@@ -57,21 +110,7 @@ function main() {
 
 function gennemløbhændelser(map) {
 
-  var fra= moment(getQueryVariable('fra'),'YYYYMMDD');
-  if (!fra.isValid()) {
-    alert('fra=' + getQueryVariable('fra') + ' er ikke en gyldig dato');
-    return;
-  }
-
-  var til= moment(getQueryVariable('til'),'YYYYMMDD');
-  if (!til.isValid()) {
-    alert('til=' + getQueryVariable('til') + ' er ikke en gyldig dato');
-    return;
-  }
-  var tilplus= til.clone()
-  tilplus.add({days: 1});
-
-  if (!fra.isBefore(tilplus)) {
+  if (!fra.isBefore(til)) {
     alert('fra dato er senere end til dato');
     return;
   }
@@ -86,7 +125,7 @@ function gennemløbhændelser(map) {
       if (done) {
         if (result.length > 0) placerAdgangsadresse(map, result);
         console.log("Stream complete");
-        alert("Stream complete");
+        //alert("Stream complete");
         return;
       }
 
@@ -111,6 +150,7 @@ function placerAdgangsadresse(map, linje) {
   var hændelse= JSON.parse(linje);
   if (hændelse.operation === 'update' && adgangsadresserid === hændelse.data.id) return;
   adgangsadresserid= hændelse.data.id;
+  tid= moment(hændelse.tidspunkt).local().format('DD.MM.YYYY HH:mm:ss');
   //console.log(hændelse);
   var placering= kort.etrs89towgs84(hændelse.data.etrs89koordinat_øst,hændelse.data.etrs89koordinat_nord);
   if (!(placering.x || placering.y)) return; // find ud af hvorfor etrs89koordinat_øst i nogen tilfælde ændres til etrs89koordinat_��st
@@ -119,14 +159,18 @@ function placerAdgangsadresse(map, linje) {
   switch (hændelse.operation) {
     case 'insert':
       color= 'red';
+      oprettede++;
       break;
     case 'update':
       color= 'orange';
+      ændrede++;
       break;
     case 'delete':
       color= 'black';
+      nedlagte++;
       break;
     }
+  info.update();
   var marker= L.circleMarker(L.latLng(placering.y, placering.x), {color: color, fillColor: color, stroke: true, fillOpacity: 1.0, radius: 1, weight: 2, opacity: 1.0}).addTo(map);//defaultpointstyle); 
 }
 
