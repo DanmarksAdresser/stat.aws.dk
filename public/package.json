@@ -12,7 +12,7 @@
   "license": "MIT",
   "dependencies": {
     "dawa-autocomplete2": "^0.13.0",
-    "dawa-kort": "^0.1.24",
+    "dawa-kort": "^0.1.25",
     "dawa-util": "^0.1.8",
     "leaflet": "^1.2.0",
     "leaflet-contextmenu": "^1.4.0",

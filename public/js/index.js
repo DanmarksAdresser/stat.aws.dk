@@ -21,6 +21,30 @@ if (!til.isValid()) {
 }
 til.add({days: 1});
 
+
+if (!fra.isBefore(til)) {
+  alert('fra dato er senere end til dato');
+}
+
+var radius= getQueryVariable('radius');
+if (typeof radius === 'undefined') {
+  radius= 1;
+}
+else {
+  radius= parseInt(radius);
+}
+
+console.log('radius: '+radius);
+
+var update= getQueryVariable('update');
+if (typeof update === 'undefined') {
+  update= 100;
+}
+else {
+  update= parseInt(update);
+}
+console.log('update: '+update);
+
 var info = L.control();
 
 info.onAdd = function (map) {
@@ -32,6 +56,7 @@ info.onAdd = function (map) {
 var oprettede= 0
   , ændrede= 0
   , nedlagte= 0
+  , total= 0
   , tid= "";
 
 // method that we will use to update the control based on feature properties passed
@@ -97,8 +122,11 @@ var options= {
 
 function main() { 
   fetch('/getticket').then(function (response) {
-    response.text().then(function (ticket) {      
+    response.text().then(function (ticket) {
+      options.baselayer= "Skærmkort - dæmpet";
+      //options.preferCanvas= true;      
       map= kort.viskort('map', ticket, options);
+      map.scrollWheelZoom.disable();
       info.addTo(map);
       legend.addTo(map);
       var center= kort.beregnCenter();
@@ -108,57 +136,74 @@ function main() {
   });  
 }
 
-function gennemløbhændelser(map) {
+async function gennemløbhændelser(map) {
+  // Forespøgelsel af hændelser spillets op i perioder for at undgå netværksproblemer ved en enkel forespørgelse med mange hændelser.
+  var t1
+    , t2= fra.clone();
 
-  if (!fra.isBefore(til)) {
-    alert('fra dato er senere end til dato');
-    return;
-  }
+  do {
+    t1= t2;
+    t2= t1.clone().add({days: 10});
+    //console.log(t1.local().format('DD.MM.YYYY HH:mm:ss')  + ' - ' + t2.local().format('DD.MM.YYYY HH:mm:ss'));
+    if (t2.isBefore(til)) {
+      await enperiode(map,t1,t2);
+    }
+    else {
+      await enperiode(map,t1,til);
+      //console.log("Complete");
+    }
+  } while (t2.isBefore(til));
+}
 
-  let url = util.danUrl('http://dawa.aws.dk/replikering/adgangsadresser/haendelser', {tidspunktfra: fra.utc().toISOString(), tidspunkttil: til.utc().toISOString(), ndjson: true}); 
-  fetch(url).then(function (response) { //'?tidspunktfra=2014-11-28T18:59:02.045Z&tidspunkttil=2014-12-01T18:59:02.045Z&ndjson').then(function (response) {
-    const reader= response.body.getReader();
-    var result= new Uint8Array();
+function enperiode (map, fra, til) {
 
-    reader.read().then(function processText({ done, value }) {
+  return new Promise((resolve, reject) => {
+    let url = util.danUrl('http://dawa.aws.dk/replikering/adgangsadresser/haendelser', {tidspunktfra: fra.utc().toISOString(), tidspunkttil: til.utc().toISOString(), ndjson: true}); 
+    //console.log(url);
+    fetch(url).then(function (response) { //'?tidspunktfra=2014-11-28T18:59:02.045Z&tidspunkttil=2014-12-01T18:59:02.045Z&ndjson').then(function (response) {
+      const reader= response.body.getReader();
+      var result= new Uint8Array();
 
-      if (done) {
-        if (result.length > 0) {
-          var linje= new TextDecoder("utf-8").decode(result);
-          placerAdgangsadresse(map, linje);
+      reader.read().then(function processText({ done, value }) {
+
+        if (done) {
+          if (result.length > 0) {
+            var linje= new TextDecoder("utf-8").decode(result);
+            placerAdgangsadresse(map, linje);
+          }
+          //console.log("Stream complete");
+          //alert("Stream complete");
+          info.update();
+          resolve()
+          return;
         }
-        console.log("Stream complete");
-        //alert("Stream complete");
-        return;
-      }
-      var arr= new Uint8Array(result.length + value.length);
-      arr.set(result);
-      arr.set(value, result.length);
-      result= arr;
-      var p1= 0, p2;
-      while ((p2= result.indexOf(10,p1)) != -1) {
-        console.log()
-        var linje= new TextDecoder("utf-8").decode(result.slice(p1,p2));
-        p1= p2+1;
-        placerAdgangsadresse(map, linje);
-      };
-      result= result.slice(p1);
+        var arr= new Uint8Array(result.length + value.length);
+        arr.set(result);
+        arr.set(value, result.length);
+        result= arr;
+        var p1= 0, p2;
+        while ((p2= result.indexOf(10,p1)) != -1) {
+          console.log()
+          var linje= new TextDecoder("utf-8").decode(result.slice(p1,p2));
+          p1= p2+1;
+          placerAdgangsadresse(map, linje);
+        };
+        result= result.slice(p1);
 
-      return reader.read().then(processText);
-    });
+        return reader.read().then(processText);
+      });
 
-  });  
+    });  
+  });
 }
 
 var adgangsadresserid;
 function placerAdgangsadresse(map, linje) {
-  console.log(linje);  
+  total++;
+  //console.log(linje);  
   var hændelse= JSON.parse(linje);
-  if (hændelse.operation === 'update' && adgangsadresserid === hændelse.data.id) return;
-  adgangsadresserid= hændelse.data.id;
   tid= moment(hændelse.tidspunkt).local().format('DD.MM.YYYY HH:mm:ss');
   //console.log(hændelse);
-  var placering= kort.etrs89towgs84(hændelse.data.etrs89koordinat_øst,hændelse.data.etrs89koordinat_nord);
   //if (!(placering.x || placering.y)) return; // find ud af hvorfor etrs89koordinat_øst i nogen tilfælde ændres til etrs89koordinat_��st
   //console.log(placering);
   var color;
@@ -176,8 +221,11 @@ function placerAdgangsadresse(map, linje) {
       nedlagte++;
       break;
     }
-  info.update();
-  var marker= L.circleMarker(L.latLng(placering.y, placering.x), {color: color, fillColor: color, stroke: true, fillOpacity: 1.0, radius: 1, weight: 2, opacity: 1.0}).addTo(map);//defaultpointstyle); 
+  if (total%update === 0) info.update();
+  if (hændelse.operation === 'update' && adgangsadresserid === hændelse.data.id) return;
+  adgangsadresserid= hændelse.data.id;  
+  var placering= kort.etrs89towgs84(hændelse.data.etrs89koordinat_øst,hændelse.data.etrs89koordinat_nord);
+  var marker= L.circleMarker(L.latLng(placering.y, placering.x), {color: color, fillColor: color, stroke: true, fillOpacity: 1.0, radius: radius, weight: 2, opacity: 1.0}).addTo(map);//defaultpointstyle); 
 }
 
 function getQueryVariable(variable) {
