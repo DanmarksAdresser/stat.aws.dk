@@ -6,18 +6,24 @@ var kort= require('dawa-kort')
 
 var map;
 
+let host= 'https://dawa.aws.dk';
+let miljø= util.getQueryVariable('m');
+if (miljø) {
+  host= host.replace('dawa',miljø); 
+} 
+
 function getMap() {
   return map;
 }
 
-var fra= moment(getQueryVariable('fra'),'YYYYMMDD');
+var fra= moment(util.getQueryVariable('fra'),'YYYYMMDD');
 if (!fra.isValid()) {
-  alert('fra=' + getQueryVariable('fra') + ' er ikke en gyldig dato');
+  alert('fra=' + fra + ' er ikke en gyldig dato');
 }
 
-var til= moment(getQueryVariable('til'),'YYYYMMDD');
+var til= moment(util.getQueryVariable('til'),'YYYYMMDD');
 if (!til.isValid()) {
-  alert('til=' + getQueryVariable('til') + ' er ikke en gyldig dato');
+  alert('til=' + til + ' er ikke en gyldig dato');
 }
 til.add({days: 1});
 
@@ -26,7 +32,7 @@ if (!fra.isBefore(til)) {
   alert('fra dato er senere end til dato');
 }
 
-var radius= getQueryVariable('radius');
+var radius= util.getQueryVariable('radius');
 if (typeof radius === 'undefined') {
   radius= 1;
 }
@@ -36,7 +42,7 @@ else {
 
 console.log('radius: '+radius);
 
-var update= getQueryVariable('update');
+var update= util.getQueryVariable('update');
 if (typeof update === 'undefined') {
   update= 100;
 }
@@ -158,7 +164,7 @@ async function gennemløbhændelser(map) {
 function enperiode (map, fra, til) {
 
   return new Promise((resolve, reject) => {
-    let url = util.danUrl('http://dawa.aws.dk/replikering/adgangsadresser/haendelser', {tidspunktfra: fra.utc().toISOString(), tidspunkttil: til.utc().toISOString(), ndjson: true}); 
+    let url = util.danUrl(host + '/replikering/adgangsadresser/haendelser', {tidspunktfra: fra.utc().toISOString(), tidspunkttil: til.utc().toISOString(), ndjson: true}); 
     //console.log(url);
     fetch(url).then(function (response) { //'?tidspunktfra=2014-11-28T18:59:02.045Z&tidspunkttil=2014-12-01T18:59:02.045Z&ndjson').then(function (response) {
       const reader= response.body.getReader();
@@ -226,17 +232,6 @@ function placerAdgangsadresse(map, linje) {
   adgangsadresserid= hændelse.data.id;  
   var placering= kort.etrs89towgs84(hændelse.data.etrs89koordinat_øst,hændelse.data.etrs89koordinat_nord);
   var marker= L.circleMarker(L.latLng(placering.y, placering.x), {color: color, fillColor: color, stroke: true, fillOpacity: 1.0, radius: radius, weight: 2, opacity: 1.0}).addTo(map);//defaultpointstyle); 
-}
-
-function getQueryVariable(variable) {
-  var query = window.location.search.substring(1);
-  var vars = query.split("&");
-  for (var i=0; i<vars.length; i++) {
-    var pair = vars[i].split("=");
-    if (pair[0] == variable) {
-      return pair[1];
-    }
-  }
 }
 
 main();
